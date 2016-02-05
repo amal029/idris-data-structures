@@ -33,17 +33,27 @@ Show a => Show (TwoThreeTree a) where
   show x = show (Tree2List x)
 
 private
+get_max : (Ord a) => TwoThreeTree a -> a -> a
+get_max tree val = 
+  case (head' ll, tail' ll) of
+    (Nothing, Nothing) => val
+    (Just h, Just t) => foldl max h t
+  where
+  ll : List a
+  ll = Tree2List tree
+
+private
 update_lm_mm : Ord a => TwoThreeTree a -> TwoThreeTree a
 update_lm_mm Nil = Nil
 update_lm_mm (Leaf x) = Leaf x
-update_lm_mm (Node lm mm (Leaf u) (Leaf v) y1) = 
-    Node (max lm u) (max mm v) (Leaf u) (Leaf v) y1
-update_lm_mm (Node lm mm (Leaf u) mst y1) = 
-    Node (max lm u) (foldl max mm (Tree2List mst)) (Leaf u) mst y1
-update_lm_mm (Node lm mm lst (Leaf s1) y1) = 
-    Node (foldl max lm (Tree2List lst)) (max mm s1) lst (Leaf s1) y1
+update_lm_mm (Node _ _ (Leaf u) (Leaf v) y1) = 
+  Node u v (Leaf u) (Leaf v) y1
+update_lm_mm (Node _ mm (Leaf u) mst y1) = 
+  Node u (get_max mst mm) (Leaf u) mst y1
+update_lm_mm (Node lm _ lst (Leaf s1) y1) = 
+  Node (get_max lst lm) s1 lst (Leaf s1) y1
 update_lm_mm (Node lm mm lst mst y1) = 
-    Node (foldl max lm (Tree2List lst)) (foldl max mm (Tree2List mst)) lst mst y1
+  Node (get_max lst lm) (get_max mst mm) lst mst y1 
 
 private
 insert : Ord a => a -> TwoThreeTree a 
@@ -183,6 +193,8 @@ delete' k (Node y z lst mst t) =
               Just (Node na nb nc nd (Just ne)) => 
                 (delete'' k y z lst (Node na nb nc nd (Just ne)) (Just mst), False)
               Just (Node _ _ _ _ Nothing) => (delete''' k y z lst mst t, False)
+              -- In this case when lst is deleted only one node mst will
+              -- remain and the tree will be unbalanced.
               Nothing => (delete''' k y z lst mst t, False)
       (tt, False) => (Node y z tt mst t, False)
   else
@@ -196,6 +208,8 @@ delete' k (Node y z lst mst t) =
                 Just (Node na nb nc nd (Just ne)) => 
                   (delete'' k y z mst (Node na nb nc nd (Just ne)) (Just lst), False)
                 Just (Node _ _ _ _ Nothing) => (delete''' k y z mst lst t, False)
+                -- In this case when mst is deleted then there will be a
+                -- single node left just lst
                 Nothing => (delete''' k y z mst lst t, False)
         (tt, False) => (Node y z lst tt t, False)
     else
@@ -247,7 +261,19 @@ delete' k (Node y z lst mst t) =
   delete''' : (k : a) -> (lm : a) -> (mm : a) -> (td : TwoThreeTree a)
              -> (sibling : TwoThreeTree a) -> (xtra : Maybe (TwoThreeTree a))
              -> TwoThreeTree a
-  delete''' k lm mm td sibling xtra = ?delete'''_rhs
+  delete''' k lm mm td sibling xtra = 
+    let nsibling = Insert (remove_k_from_td k td) sibling in 
+      return_tree lm mm nsibling xtra
+    where
+    remove_k_from_td : a -> TwoThreeTree a -> a
+    remove_k_from_td k (Node _ _ (Leaf ll) (Leaf rl) Nothing) = 
+      if k == ll then rl else ll
+
+    return_tree : a -> a -> TwoThreeTree a -> Maybe (TwoThreeTree a)
+                  -> TwoThreeTree a
+    return_tree lm mm nsibling Nothing = nsibling
+    -- XXX: This should be updated later on!
+    return_tree lm mm nsibling (Just xxtra) = Node lm mm nsibling xxtra Nothing
 
 -- Delete a key from the TwoThreeTree
 Delete : (Eq a, Ord a) => a -> (TwoThreeTree a) -> TwoThreeTree a
@@ -291,3 +317,10 @@ et = Insert 19 dt
 
 ft : TwoThreeTree Nat
 ft = Insert 14 dt
+  
+-- Examples of delete
+gt : TwoThreeTree Nat
+gt = Delete 18 ft
+
+ht : TwoThreeTree Nat
+ht = Delete 11 gt
