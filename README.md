@@ -1,6 +1,5 @@
 # Implementation of 2-3 trees in Idris.
 
-
 * The implementation is based on 'C' code
   - The main issue is that many functions are not total!
 
@@ -14,3 +13,6 @@
 
 
 * I might implement a new 2-3 tree using the above data-structure.
+
+* See: http://pages.cs.wisc.edu/~vernon/cs367/notes/10.23TREE.html for
+  deltails of the algorithm.
